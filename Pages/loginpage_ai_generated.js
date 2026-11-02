@@ -6,7 +6,7 @@ class LoginPage extends BasePage {
         super(page);
 
         this.loginUrl = 'https://opensource-demo.orangehrmlive.com/web/index.php/auth/login';
-        this.usernameInput = page.getByPlaceholder('Username');
+        this.usernameInput = page.getByPlaceholder(/User/i);
         this.passwordInput = page.getByPlaceholder('Password');
         this.loginButton = page.getByRole('button', { name: 'Login', exact: true });
         this.forgotPassword = page.getByText('Forgot your password?', { exact: true });

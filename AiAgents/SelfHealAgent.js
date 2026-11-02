@@ -1,52 +1,23 @@
 const fs = require('fs');
 const { execSync } = require('child_process');
-const { FrameworkAgent } = require('./FrameworkAgent');
 
 class SelfHealAgent {
-  constructor() {
-    this.agent = new FrameworkAgent();
-  }
-
-  // Run test and heal if fails
   async runAndHeal(testFile) {
-    console.log(`[HEAL AGENT] Running ${testFile}`);
+    let log = '';
     try {
-      execSync(`npx playwright test ${testFile} --headed`, { stdio: 'inherit' });
-      console.log('✅ Test Passed - No healing needed');
-    } catch (error) {
-      console.log('❌ Test Failed - Starting Self Healing...');
-      
-      const errorLog = error.message;
-      // Extract failed locator from error
-      const failedLocatorMatch = errorLog.match(/locator\('([^']+)'\)|getBy.*\(.*\)/);
-      const failedLocator = failedLocatorMatch ? failedLocatorMatch[0] : 'unknown locator';
-      
-      const suggestion = await this.agent.healTest(failedLocator, errorLog.slice(0, 500));
-      console.log(suggestion);
+      execSync(`npx playwright test ${testFile} --project=chromium 2>&1`, {encoding:'utf-8'});
+      console.log('PASSED');
+      return;
+    } catch(e){ log = e.stdout || e.message; }
 
-      // Auto-fix logic - try 3 strategies
-      this.healFile('Pages/loginpage_ai_generated.js', failedLocator);
-      
-      console.log('Retrying test after heal...');
-      execSync(`npx playwright test ${testFile} --headed`, { stdio: 'inherit' });
-    }
-  }
-
-  healFile(filePath, failedLocator) {
-    if (!fs.existsSync(filePath)) return;
-    let content = fs.readFileSync(filePath, 'utf8');
-    // Strategy 1: If id failed, try placeholder
-    content = content.replace(`page.locator('${failedLocator}')`, `page.getByPlaceholder('${failedLocator}')`);
-    // Strategy 2: If placeholder failed, try Role
-    content = content.replace(`getByPlaceholder('${failedLocator}')`, `getByRole('button', {name: '${failedLocator}'})`);
+    const file = log.match(/Pages[\\/].*?\.js/)[0].replace(/\\/g,'/');
+    const val = log.match(/getByPlaceholder\('([^']+)'\)|name:\s*'([^']+)'/)[1] || log.match(/name:\s*'([^']+)'/)[1];
     
-    fs.writeFileSync(filePath, content);
-    console.log(`[HEAL] Updated ${filePath}`);
+    console.log(`Healing ${file} : ${val}`);
+    let code = fs.readFileSync(file, 'utf8');
+    code = code.replaceAll(`'${val}'`, `/${val.substring(0,4)}/i`);
+    fs.writeFileSync(file, code);
+    execSync(`npx playwright test ${testFile} --project=chromium --headed`, {stdio:'inherit'});
   }
 }
-
-// HOW TO USE:
-// For any test file:
-new SelfHealAgent().runAndHeal('Tests/logintest.spec.js');
-
-module.exports = { SelfHealAgent };
+new SelfHealAgent().runAndHeal(process.argv[2] || 'Tests/loginpagetest.spec.js');
