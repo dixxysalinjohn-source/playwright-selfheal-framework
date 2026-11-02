@@ -1,47 +1,16 @@
 name: Self-Heal CI/CD
-on: 
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
+on: [push, workflow_dispatch]
 jobs:
-  build-and-test:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
-      
+          node-version: 20
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-
-      - name: Build Pages with AI Agent
-        run: node AiAgents/BuildPageAgent.js
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-
-      - name: Build Tests with AI Agent
-        run: node AiAgents/BuildTestAgent.js
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-
-      - name: Run Playwright Tests
-        id: tests
-        run: npx playwright test
-        continue-on-error: true
-
-      - name: Self-Heal on Failure
-        if: steps.tests.outcome == 'failure'
-        run: node AiAgents/SelfHealAgent.js
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-
-      - name: Re-Run After Self-Heal
-        if: steps.tests.outcome == 'failure'
-        run: npx playwright test
-
+      - run: npx playwright test
       - uses: actions/upload-artifact@v4
         if: always()
         with:
