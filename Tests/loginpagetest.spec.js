@@ -12,7 +12,7 @@ test.describe('LoginPage - valid and invalid login', () => {
     await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
   });
 
-  test.only('shows an error with invalid credentials', async ({ page }) => {
+  test('shows an error with invalid credentials', async ({ page }) => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
     await loginPage.login(loginData.invalid.username, loginData.invalid.password);
